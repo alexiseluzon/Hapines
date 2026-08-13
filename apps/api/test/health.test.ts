@@ -28,7 +28,7 @@ vi.mock('../src/db/index.js', () => ({
   },
 }));
 
-const { app } = await import('../src/app.js');
+const { app } = await import('../src/app.ts');
 
 describe('GET /health', () => {
   it('returns ok status when db is reachable', async () => {
