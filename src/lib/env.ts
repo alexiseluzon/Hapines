@@ -4,8 +4,7 @@ import 'dotenv/config';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(8787),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  DATABASE_URL: z.string().url(),
   GEMINI_API_KEY: z.string().min(1),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
 });

@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { gemini, GEMINI_MODEL } from '../lib/gemini.js';
-import { Errors } from '../lib/errors.js';
-import { logger } from '../lib/logger.js';
+import { Errors } from '../lib/errors.ts';
+import { logger } from '../lib/logger.ts';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(4000),

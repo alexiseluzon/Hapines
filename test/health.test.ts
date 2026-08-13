@@ -4,21 +4,35 @@ vi.mock('../src/lib/env.js', () => ({
   env: {
     NODE_ENV: 'test',
     PORT: 8787,
-    SUPABASE_URL: 'https://example.supabase.co',
-    SUPABASE_SERVICE_ROLE_KEY: 'test-key',
+    DATABASE_URL: 'postgresql://user:pass@localhost:5432/test',
     GEMINI_API_KEY: 'test-key',
     CORS_ORIGIN: 'http://localhost:5173',
   },
 }));
 
-const { app } = await import('../src/app.js');
+vi.mock('../src/lib/db.js', () => ({
+  query: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+}));
+
+const { app } = await import('../src/app.ts');
 
 describe('GET /health', () => {
-  it('returns ok status', async () => {
+  it('returns ok status when db is reachable', async () => {
     const res = await app.request('/health');
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('ok');
+    expect(body.db).toBe('connected');
+  });
+
+  it('returns 503 when db is unreachable', async () => {
+    const { query } = await import('../src/lib/db.js');
+    vi.mocked(query).mockRejectedValueOnce(new Error('connection refused'));
+
+    const res = await app.request('/health');
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.status).toBe('degraded');
   });
 });
 
