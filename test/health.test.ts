@@ -10,11 +10,25 @@ vi.mock('../src/lib/env.js', () => ({
   },
 }));
 
-vi.mock('../src/lib/db.js', () => ({
-  query: vi.fn().mockResolvedValue([{ '?column?': 1 }]),
+const executeMock = vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] });
+const insertMock = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
+const selectMock = vi.fn().mockReturnValue({
+  from: vi.fn().mockReturnValue({
+    orderBy: vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([]),
+    }),
+  }),
+});
+
+vi.mock('../src/db/index.js', () => ({
+  db: {
+    execute: executeMock,
+    insert: insertMock,
+    select: selectMock,
+  },
 }));
 
-const { app } = await import('../src/app.ts');
+const { app } = await import('../src/app.js');
 
 describe('GET /health', () => {
   it('returns ok status when db is reachable', async () => {
@@ -26,8 +40,7 @@ describe('GET /health', () => {
   });
 
   it('returns 503 when db is unreachable', async () => {
-    const { query } = await import('../src/lib/db.js');
-    vi.mocked(query).mockRejectedValueOnce(new Error('connection refused'));
+    executeMock.mockRejectedValueOnce(new Error('connection refused'));
 
     const res = await app.request('/health');
     expect(res.status).toBe(503);
@@ -49,6 +62,15 @@ describe('POST /chat', () => {
   it('rejects missing body', async () => {
     const res = await app.request('/chat', { method: 'POST' });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /messages', () => {
+  it('returns an array of messages', async () => {
+    const res = await app.request('/messages');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.messages)).toBe(true);
   });
 });
 
