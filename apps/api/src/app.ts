@@ -20,3 +20,5 @@ app.route('/messages', messagesRoute);
 
 app.onError(errorHandler);
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
+
+export default app;
