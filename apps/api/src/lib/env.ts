@@ -7,6 +7,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   GEMINI_API_KEY: z.string().min(1),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  UPSTASH_REDIS_REST_URL: z.string().url(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

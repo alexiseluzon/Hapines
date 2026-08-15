@@ -5,12 +5,25 @@ import { db } from '../db/index.js';
 import { messages } from '../db/schema.js';
 import { Errors } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
+import { chatRateLimit } from '../lib/ratelimit.js';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(4000),
 });
 
 export const chatRoute = new Hono().post('/', async (c) => {
+  const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+
+  const { success, limit, remaining, reset } = await chatRateLimit.limit(ip);
+  c.header('X-RateLimit-Limit', String(limit));
+  c.header('X-RateLimit-Remaining', String(remaining));
+
+  if (!success) {
+    const retryAfterSeconds = Math.max(0, Math.ceil((reset - Date.now()) / 1000));
+    c.header('Retry-After', String(retryAfterSeconds));
+    throw Errors.rateLimited(`Too many requests. Try again in ${retryAfterSeconds}s.`);
+  }
+
   const body = await c.req.json().catch(() => null);
   if (!body) throw Errors.badRequest('Invalid JSON body');
 

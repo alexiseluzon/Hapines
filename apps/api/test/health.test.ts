@@ -6,6 +6,8 @@ vi.mock('../src/lib/env.js', () => ({
     PORT: 8787,
     DATABASE_URL: 'postgresql://user:pass@localhost:5432/test',
     GEMINI_API_KEY: 'test-key',
+    UPSTASH_REDIS_REST_URL: 'https://test.upstash.io',
+    UPSTASH_REDIS_REST_TOKEN: 'test-token',
     CORS_ORIGIN: 'http://localhost:5173',
   },
 }));
@@ -28,7 +30,18 @@ vi.mock('../src/db/index.js', () => ({
   },
 }));
 
-const { app } = await import('../src/app.ts');
+const limitMock = vi.fn().mockResolvedValue({
+  success: true,
+  limit: 10,
+  remaining: 9,
+  reset: Date.now() + 60_000,
+});
+
+vi.mock('../src/lib/ratelimit.js', () => ({
+  chatRateLimit: { limit: limitMock },
+}));
+
+const { app } = await import('../src/app.js');
 
 describe('GET /health', () => {
   it('returns ok status when db is reachable', async () => {
@@ -62,6 +75,25 @@ describe('POST /chat', () => {
   it('rejects missing body', async () => {
     const res = await app.request('/chat', { method: 'POST' });
     expect(res.status).toBe(400);
+  });
+
+  it('returns 429 when rate limit exceeded', async () => {
+    limitMock.mockResolvedValueOnce({
+      success: false,
+      limit: 10,
+      remaining: 0,
+      reset: Date.now() + 30_000,
+    });
+
+    const res = await app.request('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'hello' }),
+    });
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBeTruthy();
+    const body = await res.json();
+    expect(body.error.code).toBe('RATE_LIMITED');
   });
 });
 
