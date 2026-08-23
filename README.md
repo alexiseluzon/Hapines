@@ -44,7 +44,6 @@ apps/
 | Route | Method | Purpose |
 |---|---|---|
 | `/chat` | POST | Send a message, get an AI reply. Body: `{ message, sessionId? }`. Rate-limited per IP. |
-| `/messages` | GET | List recent messages (debug/inspection). |
 | `/health` | GET | Liveness + DB connectivity check. |
 | `/internal/cleanup` | GET | Deletes messages older than 30 days. Requires `Authorization: Bearer <CRON_SECRET>`. Called by Vercel Cron daily. |
 

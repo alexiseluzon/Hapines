@@ -97,15 +97,6 @@ describe('POST /chat', () => {
   });
 });
 
-describe('GET /messages', () => {
-  it('returns an array of messages', async () => {
-    const res = await app.request('/messages');
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(Array.isArray(body.messages)).toBe(true);
-  });
-});
-
 describe('404 handler', () => {
   it('returns structured 404', async () => {
     const res = await app.request('/nonexistent');
