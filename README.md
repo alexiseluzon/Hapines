@@ -99,3 +99,4 @@ defined in `apps/api/vercel.json`.
 ## License
 
 This project is provided as-is for portfolio/demonstration purposes. No
+warranty is expressed or implied.
