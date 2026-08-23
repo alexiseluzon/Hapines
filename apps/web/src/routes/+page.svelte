@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { sendChatMessage, ApiError } from '$lib/api';
 
 	type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -12,6 +13,14 @@
 	let sessionId = $state<string | undefined>(
 		typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(SESSION_KEY) ?? undefined) : undefined
 	);
+	let threadEl: HTMLElement | undefined = $state();
+
+	async function scrollToBottom() {
+		await tick();
+		if (typeof threadEl?.scrollTo === 'function') {
+			threadEl.scrollTo({ top: threadEl.scrollHeight, behavior: 'smooth' });
+		}
+	}
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
@@ -22,12 +31,14 @@
 		message = '';
 		loading = true;
 		error = '';
+		scrollToBottom();
 
 		try {
 			const res = await sendChatMessage(text, sessionId);
 			thread.push({ role: 'assistant', content: res.reply });
 			sessionId = res.sessionId;
 			sessionStorage.setItem(SESSION_KEY, res.sessionId);
+			scrollToBottom();
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong. Try again.';
 		} finally {
@@ -49,7 +60,7 @@
 	<p class="subtitle">A quiet space to check in on your day.</p>
 
 	{#if thread.length}
-		<section class="thread" aria-live="polite">
+		<section class="thread" aria-live="polite" bind:this={threadEl}>
 			{#each thread as msg}
 				<p class="bubble {msg.role}">{msg.content}</p>
 			{/each}
@@ -79,6 +90,9 @@
 
 <style>
 	.page {
+		display: flex;
+		flex-direction: column;
+		height: 100dvh;
 		max-width: 640px;
 		margin: 0 auto;
 		padding: 2rem 1rem;
@@ -88,13 +102,18 @@
 	.subtitle {
 		color: #555;
 		margin-bottom: 1.5rem;
+		flex-shrink: 0;
 	}
 
 	.thread {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
-		margin-bottom: 1.5rem;
+		margin-bottom: 1rem;
+		padding-right: 0.25rem;
 	}
 
 	.bubble {
@@ -120,6 +139,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
+		flex-shrink: 0;
 	}
 
 	textarea {
