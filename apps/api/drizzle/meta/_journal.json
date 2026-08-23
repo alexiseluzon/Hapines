@@ -8,6 +8,13 @@
       "when": 1786648645258,
       "tag": "0000_goofy_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787505769639,
+      "tag": "0001_unknown_supernaut",
+      "breakpoints": true
     }
   ]
 }

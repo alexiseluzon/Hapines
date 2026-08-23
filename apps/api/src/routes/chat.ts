@@ -1,14 +1,19 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { eq, asc } from 'drizzle-orm';
 import { gemini, GEMINI_MODEL } from '../lib/gemini.js';
+import { SYSTEM_PROMPT } from '../lib/prompts.js';
 import { db } from '../db/index.js';
 import { messages } from '../db/schema.js';
 import { Errors } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { chatRateLimit } from '../lib/ratelimit.js';
 
+const MAX_HISTORY_MESSAGES = 20; // cap context sent to Gemini per turn
+
 const chatSchema = z.object({
   message: z.string().min(1).max(4000),
+  sessionId: z.string().uuid().optional(),
 });
 
 export const chatRoute = new Hono().post('/', async (c) => {
@@ -27,23 +32,39 @@ export const chatRoute = new Hono().post('/', async (c) => {
   const body = await c.req.json().catch(() => null);
   if (!body) throw Errors.badRequest('Invalid JSON body');
 
-  const { message } = chatSchema.parse(body);
+  const { message, sessionId: incomingSessionId } = chatSchema.parse(body);
+  const sessionId = incomingSessionId ?? crypto.randomUUID();
 
-  await db.insert(messages).values({ role: 'user', content: message });
+  const history = incomingSessionId
+    ? await db.query.messages.findMany({
+        where: eq(messages.sessionId, incomingSessionId),
+        orderBy: asc(messages.createdAt),
+        limit: MAX_HISTORY_MESSAGES,
+      })
+    : [];
+
+  await db.insert(messages).values({ sessionId, role: 'user', content: message });
 
   let reply: string;
   try {
     const response = await gemini.models.generateContent({
       model: GEMINI_MODEL,
-      contents: message,
+      config: { systemInstruction: SYSTEM_PROMPT },
+      contents: [
+        ...history.map((m) => ({
+          role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
+          parts: [{ text: m.content }],
+        })),
+        { role: 'user' as const, parts: [{ text: message }] },
+      ],
     });
     reply = response.text ?? '';
   } catch (err) {
-    logger.error('Gemini API call failed', { error: (err as Error).message });
+    logger.error('Gemini API call failed', { error: (err as Error).message, sessionId });
     throw Errors.internal('AI service temporarily unavailable');
   }
 
-  await db.insert(messages).values({ role: 'assistant', content: reply });
+  await db.insert(messages).values({ sessionId, role: 'assistant', content: reply });
 
-  return c.json({ reply });
+  return c.json({ reply, sessionId });
 });
