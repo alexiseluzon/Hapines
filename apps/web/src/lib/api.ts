@@ -9,11 +9,14 @@ export class ApiError extends Error {
 	}
 }
 
-export async function sendChatMessage(message: string): Promise<string> {
+export async function sendChatMessage(
+	message: string,
+	sessionId?: string
+): Promise<{ reply: string; sessionId: string }> {
 	const res = await fetch(`${PUBLIC_API_URL}/chat`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ message })
+		body: JSON.stringify({ message, sessionId })
 	});
 
 	if (!res.ok) {
@@ -21,6 +24,5 @@ export async function sendChatMessage(message: string): Promise<string> {
 		throw new ApiError(res.status, body.error?.message ?? 'Request failed');
 	}
 
-	const data = await res.json();
-	return data.reply;
+	return res.json();
 }

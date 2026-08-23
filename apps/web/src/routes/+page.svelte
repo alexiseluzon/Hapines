@@ -1,21 +1,33 @@
 <script lang="ts">
 	import { sendChatMessage, ApiError } from '$lib/api';
 
+	type ChatMessage = { role: 'user' | 'assistant'; content: string };
+
+	const SESSION_KEY = 'hapines_session_id';
+
 	let message = $state('');
-	let reply = $state('');
+	let thread = $state<ChatMessage[]>([]);
 	let loading = $state(false);
 	let error = $state('');
+	let sessionId = $state<string | undefined>(
+		typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem(SESSION_KEY) ?? undefined) : undefined
+	);
 
 	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
-		if (!message.trim() || loading) return;
+		const text = message.trim();
+		if (!text || loading) return;
 
+		thread.push({ role: 'user', content: text });
+		message = '';
 		loading = true;
 		error = '';
-		reply = '';
 
 		try {
-			reply = await sendChatMessage(message.trim());
+			const res = await sendChatMessage(text, sessionId);
+			thread.push({ role: 'assistant', content: res.reply });
+			sessionId = res.sessionId;
+			sessionStorage.setItem(SESSION_KEY, res.sessionId);
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Something went wrong. Try again.';
 		} finally {
@@ -25,39 +37,43 @@
 </script>
 
 <svelte:head>
-	<title>HAPINES — AI Assistant Demo</title>
-	<meta name="description" content="HAPINES demo: an AI-powered assistant built with SvelteKit, Hono, and Claude." />
+	<title>Hapines — Daily Check-In Companion</title>
+	<meta
+		name="description"
+		content="Hapines: a daily mood check-in companion built with SvelteKit, Hono, and Gemini."
+	/>
 </svelte:head>
 
 <main class="page">
-	<h1>HAPINES</h1>
-	<p class="subtitle">Ask the assistant anything.</p>
+	<h1>Hapines</h1>
+	<p class="subtitle">A quiet space to check in on your day.</p>
+
+	{#if thread.length}
+		<section class="thread" aria-live="polite">
+			{#each thread as msg}
+				<p class="bubble {msg.role}">{msg.content}</p>
+			{/each}
+		</section>
+	{/if}
 
 	<form onsubmit={handleSubmit} class="chat-form">
 		<label for="message" class="sr-only">Your message</label>
 		<textarea
 			id="message"
 			bind:value={message}
-			placeholder="Type your message…"
-			rows="4"
+			placeholder="How's your day going?"
+			rows="3"
 			maxlength="4000"
 			disabled={loading}
 		></textarea>
 
-		<button type="submit" disabled={loading || !message.trim()} aria-busy={loading}>
+		<button type="submit" disabled={loading || !message.trim()} aria-busy={loading} title="Send message">
 			{loading ? 'Thinking…' : 'Send'}
 		</button>
 	</form>
 
 	{#if error}
 		<p class="error" role="alert">{error}</p>
-	{/if}
-
-	{#if reply}
-		<section class="reply" aria-live="polite">
-			<h2 class="sr-only">Response</h2>
-			<p>{reply}</p>
-		</section>
 	{/if}
 </main>
 
@@ -72,6 +88,32 @@
 	.subtitle {
 		color: #555;
 		margin-bottom: 1.5rem;
+	}
+
+	.thread {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.bubble {
+		padding: 0.65rem 0.9rem;
+		border-radius: 10px;
+		white-space: pre-wrap;
+		max-width: 85%;
+	}
+
+	.bubble.user {
+		align-self: flex-end;
+		background: #4f46e5;
+		color: white;
+	}
+
+	.bubble.assistant {
+		align-self: flex-start;
+		background: #f5f5f7;
+		color: #1a1a1a;
 	}
 
 	.chat-form {
@@ -114,14 +156,6 @@
 	.error {
 		color: #b91c1c;
 		margin-top: 1rem;
-	}
-
-	.reply {
-		margin-top: 1.5rem;
-		padding: 1rem;
-		background: #f5f5f7;
-		border-radius: 8px;
-		white-space: pre-wrap;
 	}
 
 	.sr-only {

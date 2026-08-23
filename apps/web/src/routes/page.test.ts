@@ -31,7 +31,7 @@ describe('Chat page', () => {
 	it('shows reply after successful submit', async () => {
 		fetchMock.mockResolvedValueOnce({
 			ok: true,
-			json: async () => ({ reply: 'Hi there!' })
+			json: async () => ({ reply: 'Hi there!', sessionId: 'test-session-id' })
 		});
 
 		render(Page);
