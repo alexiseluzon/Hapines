@@ -22,8 +22,8 @@
 		}
 	}
 
-	async function handleSubmit(e: SubmitEvent) {
-		e.preventDefault();
+	async function handleSubmit(e?: SubmitEvent) {
+		e?.preventDefault();
 		const text = message.trim();
 		if (!text || loading) return;
 
@@ -49,7 +49,7 @@
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
-			(e.currentTarget as HTMLElement)?.closest('form')?.requestSubmit();
+			handleSubmit();
 		}
 	}
 </script>

@@ -60,4 +60,59 @@ describe('Chat page', () => {
 			expect(screen.getByRole('alert')).toHaveTextContent(/temporarily unavailable/i);
 		});
 	});
+
+	it('sends the message when Enter is pressed', async () => {
+		fetchMock.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({ reply: 'Got it.', sessionId: 'test-session-id' })
+		});
+
+		render(Page);
+		const textarea = screen.getByLabelText(/your message/i);
+		await fireEvent.input(textarea, { target: { value: 'Hello' } });
+		await fireEvent.keyDown(textarea, { key: 'Enter' });
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it('does not send and inserts a newline when Shift+Enter is pressed', async () => {
+		render(Page);
+		const textarea = screen.getByLabelText(/your message/i);
+		await fireEvent.input(textarea, { target: { value: 'Hello' } });
+		await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('reuses the returned sessionId on the next message', async () => {
+		fetchMock
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ reply: 'First reply', sessionId: 'session-abc' })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ reply: 'Second reply', sessionId: 'session-abc' })
+			});
+
+		render(Page);
+		const textarea = screen.getByLabelText(/your message/i);
+
+		await fireEvent.input(textarea, { target: { value: 'First message' } });
+		await fireEvent.click(screen.getByRole('button', { name: /send/i }));
+		await waitFor(() => expect(screen.getByText('First reply')).toBeInTheDocument());
+
+		await fireEvent.input(textarea, { target: { value: 'Second message' } });
+		await fireEvent.click(screen.getByRole('button', { name: /send/i }));
+		await waitFor(() => expect(screen.getByText('Second reply')).toBeInTheDocument());
+
+		const secondCallBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+		expect(secondCallBody.sessionId).toBe('session-abc');
+
+		// Both turns' messages should still be visible in the thread.
+		expect(screen.getByText('First message')).toBeInTheDocument();
+		expect(screen.getByText('Second message')).toBeInTheDocument();
+	});
 });

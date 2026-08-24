@@ -31,4 +31,38 @@ test.describe('Chat flow', () => {
 		await page.keyboard.press('Tab');
 		await expect(page.getByLabel(/your message/i)).toBeFocused();
 	});
+
+	test('sends the message when Enter is pressed', async ({ page }) => {
+		await page.route('**/chat', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ reply: 'Got it.', sessionId: 'e2e-session-id' })
+			})
+		);
+
+		await page.goto('/');
+		const textarea = page.getByLabel(/your message/i);
+		await textarea.click();
+		await textarea.fill('Hello there');
+		await page.waitForTimeout(200);
+
+		const [response] = await Promise.all([
+			page.waitForResponse('**/chat'),
+			textarea.press('Enter')
+		]);
+		expect(response.status()).toBe(200);
+
+		await expect(page.getByText('Got it.')).toBeVisible();
+	});
+
+	test('Shift+Enter inserts a newline instead of sending', async ({ page }) => {
+		await page.goto('/');
+		const textarea = page.getByLabel(/your message/i);
+		await textarea.fill('Hello there');
+		await textarea.press('Shift+Enter');
+		await textarea.type('second line');
+
+		await expect(textarea).toHaveValue('Hello there\nsecond line');
+	});
 });
