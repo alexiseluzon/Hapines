@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { sendChatMessage, ApiError } from '$lib/api';
 
-	type ChatMessage = { role: 'user' | 'assistant'; content: string };
+	type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 
 	const SESSION_KEY = 'hapines_session_id';
 
@@ -27,7 +27,7 @@
 		const text = message.trim();
 		if (!text || loading) return;
 
-		thread.push({ role: 'user', content: text });
+		thread.push({ id: crypto.randomUUID(), role: 'user', content: text });
 		message = '';
 		loading = true;
 		error = '';
@@ -35,7 +35,7 @@
 
 		try {
 			const res = await sendChatMessage(text, sessionId);
-			thread.push({ role: 'assistant', content: res.reply });
+			thread.push({ id: crypto.randomUUID(), role: 'assistant', content: res.reply });
 			sessionId = res.sessionId;
 			sessionStorage.setItem(SESSION_KEY, res.sessionId);
 			scrollToBottom();
@@ -68,7 +68,7 @@
 
 	{#if thread.length}
 		<section class="thread" aria-live="polite" bind:this={threadEl}>
-			{#each thread as msg}
+			{#each thread as msg (msg.id)}
 				<p class="bubble {msg.role}">{msg.content}</p>
 			{/each}
 		</section>

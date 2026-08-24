@@ -22,6 +22,7 @@ jobs:
           cache-dependency-path: apps/api/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - run: npm run lint
       - run: npm test
         env:
           NODE_ENV: test
@@ -49,6 +50,7 @@ jobs:
       - run: npm ci
       - run: cp .env.example .env
       - run: npm run check
+      - run: npm run lint
       - run: npm test
       - run: npm run build
 

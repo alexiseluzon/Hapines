@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.svelte-kit/
+.vercel/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+drizzle/
+package-lock.json
