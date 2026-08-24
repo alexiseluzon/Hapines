@@ -45,6 +45,13 @@
 			loading = false;
 		}
 	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			(e.currentTarget as HTMLElement)?.closest('form')?.requestSubmit();
+		}
+	}
 </script>
 
 <svelte:head>
@@ -72,7 +79,8 @@
 		<textarea
 			id="message"
 			bind:value={message}
-			placeholder="How's your day going?"
+			onkeydown={handleKeydown}
+			placeholder="How's your day going? (Enter to send, Shift+Enter for a new line)"
 			rows="3"
 			maxlength="4000"
 			disabled={loading}
