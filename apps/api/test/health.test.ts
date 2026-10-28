@@ -41,6 +41,7 @@ const limitMock = vi.fn().mockResolvedValue({
 
 vi.mock('../src/lib/ratelimit.js', () => ({
   chatRateLimit: { limit: limitMock },
+  redis: { ping: vi.fn().mockResolvedValue('PONG') },
 }));
 
 const generateContentMock = vi.fn().mockResolvedValue({ text: 'Thanks for sharing that.' });

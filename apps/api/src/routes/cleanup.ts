@@ -5,6 +5,7 @@ import { messages } from '../db/schema.js';
 import { env } from '../lib/env.js';
 import { Errors } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
+import { redis } from '../lib/ratelimit.js';
 
 const RETENTION_DAYS = 30;
 
@@ -19,6 +20,11 @@ export const cleanupRoute = new Hono().get('/', async (c) => {
   const deleted = await db.delete(messages).where(lt(messages.createdAt, cutoff)).returning({
     id: messages.id,
   });
+  try {
+    await redis.ping();
+  } catch (err) {
+    logger.warn('Redis keep-alive ping failed', { error: (err as Error).message });
+  }
 
   logger.info('Cleanup run complete', { deletedCount: deleted.length, cutoff: cutoff.toISOString() });
 
